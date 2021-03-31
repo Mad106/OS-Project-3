@@ -8,37 +8,38 @@ int main(int argc, char *argv[]){
 	
 	char* command;
 	
-	while(command != "Exit"){
+	while(command != "exit"){
 		
-		gets(command);
+		print("$");
+		read_from_stdin(command);
 		
-		if(command == "Info"){
+		if(command == "info"){
 			
-		}else if(strncmp("size",command,4)){
+		}else if(command == "size"){
 			
-		}else if(strncmp("ls",command,2)){
+		}else if(command == "ls"){
 			
-		}else if(strncmp("cd",command,2)){
+		}else if(command == "cd"){
 			
-		}else if(strncmp("creat",command,5)){
+		}else if(command == "creat"){
 			
-		}else if(strncmp("mkdir",command,5)){
+		}else if(command == "mkdir"){
 		
-		}else if(strncmp("mv",command,2)){
+		}else if(command == "mv"){
 			
-		}else if(strncmp("open",command,4)){
+		}else if(command == "open"){
 			
-		}else if(strncmp("close",command,5)){
+		}else if(command == "close"){
 			
-		}else if(strncmp("lseek",command,5)){
+		}else if(command == "lseek"){
 			
-		}else if(strncmp("read",command,4)){
+		}else if(command == "read"){
 			
-		}else if(strncmp("write",command,5)){
+		}else if(command == "write"){
 			
-		}else if(strncmp("rm",command,2)){
+		}else if(command == "rm"){
 			
-		}else if(strncmp("cp",command,2)){
+		}else if(command == "cp"){
 			
 		}else{
 			printf("%s is an invalid command\n",command);
