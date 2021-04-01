@@ -1,4 +1,4 @@
-#include <cstdio>
+#include <stdio.h>
 
 int main(int argc, char *argv[]){
 	/* run accept .img then wait for user to input commands and respond accordingly */
@@ -11,15 +11,18 @@ int main(int argc, char *argv[]){
 	while(command != "exit"){
 		
 		print("$");
-		read_from_stdin(command);
+		scanf("%s",command);
 		
 		if(command == "info"){
 			
 		}else if(command == "size"){
+			scanf("%s",command);
 			
 		}else if(command == "ls"){
+			scanf("%s",command);
 			
 		}else if(command == "cd"){
+			scanf("%s",command);
 			
 		}else if(command == "creat"){
 			
