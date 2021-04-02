@@ -1,12 +1,3 @@
-<<<<<<< HEAD
-#include <stdio.h>
-#include <stdlib.h>
-#inlude <unistd.h>
-#include <math.h>
-
-char* reverseEndian(long size, char* buffer);
-int binarytoint(long size, char* buffer);
-=======
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -32,7 +23,6 @@ struct DIRENTRY {
 int FileOffset(int clusterNum);
 int FileExists(const unsigned char* fName, int fd); // ret 1 if file exists, else 0
 void ReadEntry(struct DIRENTRY* entry, int fd);
->>>>>>> f31f49329c5cb4bf8b69dceafc572ae7b3f75d51
 
 int main(int argc, char *argv[]){
 	
@@ -43,32 +33,21 @@ int main(int argc, char *argv[]){
 	char* command;
 	int value;	/* converted number from binary */
 	
-	/* run accept .img then wait for user to input commands and respond accordingly */
-<<<<<<< HEAD
-	/* take in/open .img */
-	FILE* pFile = open(argv[1],"r+");
-	if(pFile == NULL){
-		fputs("File error\n", stderr);
-		exit(1);
+	/* open fat32 image (argv[1] with read/write permissions */
+	/* fd tracks position inside fat32 image, reads data into buff */
+	int fd;
+	fd = open(argv[1], 2);
+
+	/* if input file didn't open, print error and quit */
+	if(fd < 0){
+		printf("File %s not found", argv[1]);
+		exit(EXIT_FAILURE);
 	}
 	
-	/* allocate memory to contain the whole file: */
-	buffer = (char*)malloc(sizeof(char)*lSize);
-	if(buffer == NULL){
-		fputs("Memory error\n",stderr);
-		exit(2);
-	}
-	
-	/* copy file into buffer */
-	/* this section is probably temporary bc will likely only store bytes
-		needed for specific commands */
-	result = read(0,buffer,lSize);
-	if(result != lSize){
-		fputs("Reading error",stderr);
-		exit(3);
-	}
-	
-	/* whole file is not loaded in the memory buffer */
+	/* user command input */
+	char* command = (char*)malloc(sizeof(char*));
+	printf("$");
+	scanf("%s", command);
 	
 	while(command != "exit"){
 		
@@ -115,31 +94,6 @@ int main(int argc, char *argv[]){
 			printf("FAT Size: %d\n", value;);
 			
 			/* root cluster */
-=======
-
-	/* open fat32 image (argv[1] with read/write permissions */
-	/* fd tracks position inside fat32 image, reads data into buff */
-	int fd;
-	fd = open(argv[1], 2);
-
-	/* if input file didn't open, print error and quit */
-	if(fd < 0){
-		printf("File %s not found", argv[1]);
-		exit(EXIT_FAILURE);
-	}
-	
-	/* user command input */
-	char* command = (char*)malloc(sizeof(char*));
-	printf("$");
-	scanf("%s", command);
-
-	while(strcmp("exit", command) != 0){
-		/* prompt and obtain user input */	
-		printf("$");
-		scanf("%s", command);
-		
-		if(command == "info"){
->>>>>>> f31f49329c5cb4bf8b69dceafc572ae7b3f75d51
 			
 		}else if(command == "size"){
 			scanf("%s",command);
@@ -175,27 +129,6 @@ int main(int argc, char *argv[]){
 		}
 		
 	}
-<<<<<<< HEAD
-	
-	return 0;
-}
-
-char* reverseEndian(long size, char* buffer){
-	char result[size];
-	for(int i = 0; i < size; i++){
-		result[i] = buffer[size-i-1];
-	}
-	return result;
-}
-
-int binarytoint(long size, char* buffer){
-	int value = 0;
-	for(int i = 0; i < size; i++){
-		value += buffer[i]*pow(2,i);
-	}
-	return value;
-}
-=======
 		
 	return 0;
 }
@@ -234,5 +167,3 @@ void ReadEntry(struct DIRENTRY* entry, int fd)
 	read(fd, entry->DIR_FstClusLo, 2);
 	read(fd, entry->DIR_FileSize, 4);
 }
-
->>>>>>> f31f49329c5cb4bf8b69dceafc572ae7b3f75d51
