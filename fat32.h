@@ -25,6 +25,10 @@ typedef struct
     legal values are 1, 2, 4, 8, 16, 32, 64, and 128. */
     uint8_t BPB_SecPerClus;
 
+    /* Number of byes per cluster. Not part of original BPB params,
+    added by Ryan for ease of use in write function. */
+    uint32_t BPB_BytsPerClus;            
+
     /* Number of reserved sectors in the reserved region 
     of  the  volume  starting  at  the  first  sector  of  the 
     volume.  This  field  is  used  to  align  the  start  of  the 
