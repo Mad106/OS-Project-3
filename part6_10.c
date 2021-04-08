@@ -57,6 +57,7 @@ void cp(const char*, const char*);
 void rm(const char*);
 void write(const char*, const char*, const char*);
 void read(const char*, const char*);
+int size_file(const char *fname);
 
 /* helpers */
 void find_free_space(uint32_t *usedClust, uint32_t *freeClust);
@@ -315,6 +316,14 @@ int parse_command(char *command)
             printf("Not enough arguments.\n");
         return 1;
     }
+	else if (strcmp(cmd, "size") == 0)
+	{
+		arg1 = strtok(NULL, "\t\n");
+		if(arg1)
+		{
+			return size_file(arg1);
+		}
+	}
     else
         printf("Invalid command\n");
     return -1;
@@ -711,6 +720,27 @@ void read(const char* fname, const char* size)
     fread(&buff, atoi(size), 1, fImage);
     buff[sizeof(buff)] = '\0';
     printf("%s\n", buff);
+
+/* "size" command */
+int size_file(const char *fname)
+{
+	uint32_t currClust = CWD;
+	DIR_Entry entry;
+	if(!find_dir_entry(fname, &entry, &offset))
+	{
+		fprintf(stderr, "File does not exist,\n");
+		return -1;
+	}
+	
+	currClust = openedFiles[find_opened_file]->firstCluster;
+	do
+	{
+		currClust = next_cluster(currClust);
+		size += (bpb.BPB_BytsPerSec * bpb.BPB_SecPerClus);
+	} while (currClust < BAD_CLUSTER);
+	
+	printf("Size of %s in bytes: %d\n",fname,size);
+	return 1;
 }
 
 /* find directory entry in CWD for the given name.

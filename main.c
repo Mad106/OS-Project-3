@@ -26,12 +26,12 @@ void ReadEntry(struct DIRENTRY* entry, int fd);
 
 int main(int argc, char *argv[]){
 	
-	FILE* pFile;
 	long lSize;
 	char* buffer;
 	size_t result;	/* value could reveal errors */
 	char* command;
 	int value;	/* converted number from binary */
+	size_t currentDir;	/* current working directory */
 	
 	/* open fat32 image (argv[1] with read/write permissions */
 	/* fd tracks position inside fat32 image, reads data into buff */
@@ -43,6 +43,11 @@ int main(int argc, char *argv[]){
 		printf("File %s not found", argv[1]);
 		exit(EXIT_FAILURE);
 	}
+	
+	/* default current working directory is root */
+	lseek(fd,44,SEEK_SET);
+	read(fd,(void*)buffer,4);
+	currentDir = (size_t)buffer;
 	
 	/* user command input */
 	char* command = (char*)malloc(sizeof(char*));
@@ -58,45 +63,44 @@ int main(int argc, char *argv[]){
 			free(buffer);
 		}else if(command == "info"){	/* deal with little endian */
 			/* bytes per sector */
-			read(11,(void*)buffer,2);
-			lSize = 2;
-			value = binarytoint(lSize,reverseEndian(lSize,(char*)buffer));
-			printf("Bytes per Sector: %d\n", value);
+			lseek(fd,11,SEEK_SET);
+			read(fd,(void*)buffer,2);
+			printf("Bytes per Sector: %d\n", buffer);
 			
 			/* sectors per cluster */
-			read(13,(void*)buffer,1);
-			lSize = 1;
-			value = binarytoint(lSize,reverseEndian(lSize,(char*)buffer));
-			printf("Sectors per Cluster: %d\n", value);
+			lseek(fd,13,SEEK_SET);
+			read(fd,(void*)buffer,1);
+			printf("Sectors per Cluster: %d\n", buffer);
 			
 			/* reserved sector count */
-			read(14,(void*)buffer,2);
-			lSize = 2;
-			value = binarytoint(lSize,reverseEndian(lSize,(char*)buffer));
-			printf("Reserved Sector Count: %d\n", value);
+			lseek(fd,14,SEEK_SET);
+			read(fd,(void*)buffer,2);
+			printf("Reserved Sector Count: %d\n", buffer);
 			
 			/* number of FATs */
-			read(16,(void*)buffer,1);
-			lSize = 1;
-			value = binarytoint(lSize,reverseEndian(lSize,(char*)buffer));
-			printf("Number of FATs: %d\n", value);
+			lseek(fd,16,SEEK_SET);
+			read(fd,(void*)buffer,1);
+			printf("Number of FATs: %d\n", buffer);
 			
 			/* total sectors */
-			read(19,(void*)buffer,2);
-			lSize = 2;
-			value = binarytoint(lSize,reverseEndian(lSize,(char*)buffer));
-			printf("Total Sector: %d\n", value);
+			lseek(fd,19,SEEK_SET);
+			read(fd,(void*)buffer,2);
+			printf("Total Sector: %d\n", buffer);
 			
 			/* FAT size */
-			read(22,(void*)buffer,2);
-			lSize = 2;
-			value = binarytoint(lSize,reverseEndian(lSize,(char*)buffer));
-			printf("FAT Size: %d\n", value;);
+			lseek(fd,22,SEEK_SET);
+			read(fd,(void*)buffer,2);
+			printf("FAT Size: %d\n", buffer);
 			
 			/* root cluster */
+			lseek(fd,44,SEEK_SET);
+			read(fd,(void*)buffer,4);	/* location of root; name? */
 			
 		}else if(command == "size"){
 			scanf("%s",command);
+			lseek(fd,currentDir,SEEK_SET);
+			struct DIRENTRY* entry;
+			ReadEntry(entry,fd);
 			
 		}else if(command == "ls"){
 			scanf("%s",command);
