@@ -305,7 +305,7 @@ int parse_command(char *command)
             {
                 arg3 = strtok(NULL, "\"");
                 if(arg3)
-                  write(arg1, arg2, arg3);
+                    write(arg1, arg2, arg3);
                 else
                     printf("Not enough arguments.\n");
             }
@@ -489,14 +489,14 @@ int info()
 void lseek(const char* fname, const char* ofs)
 {
     uint32_t offFrom;
-    int fileIndex;
-    DIR_Entry dir;
+    int fileIndex;     
+    DIR_Entry dir;          
 
     if(!find_dir_entry(fname, &dir, &offFrom))
-    {
+    {       
         printf("File %s does not exist.\n", fname);
         return;
-    }
+    }          
 
     /* Check if file is open */
     fileIndex = find_opened_file(fname);
@@ -504,14 +504,18 @@ void lseek(const char* fname, const char* ofs)
     {
         printf("%s is not open.\n", fname);
         return;
-    }
-    else
+    }              
+    else          
     {
-        if(atoi(ofs)+fileIndex > dir.DIR_FileSize)
-        {
+        offFrom = dir.DIR_FileSize/bpb.BPB_BytsPerClus;
+        if(dir.DIR_FileSize%bpb.BPB_BytsPerClus > 0)
+            ++offFrom;
+        offFrom *= bpb.BPB_BytsPerClus;
+        if(atoi(ofs) > offFrom)                   
+        {   
             printf("Offset goes out of bounds.\n");
             return;
-        }
+        }                             
         else
             openedFiles[fileIndex].filePointer = atoi(ofs);
     }
@@ -520,7 +524,7 @@ void lseek(const char* fname, const char* ofs)
 /* "cp" command */
 void cp(const char* fname, const char* dname)
 {
-    uint32_t offFrom, offTo, clust, pos, clustData, posData, content, posVal;
+    uint32_t offFrom, offTo, clust, pos, clustData, posData, content, fatVal;
     int firstRun = 1;
     DIR_Entry entryFrom, entryTo, copy;
 
@@ -536,10 +540,12 @@ void cp(const char* fname, const char* dname)
         return;
     }
     copy = entryFrom;
-/*
+
     do
     {
         pos = fat_offset(entryFrom.DIR_FirstClusterLow);
+        fseek(fImage, pos, SEEK_SET);
+        fwrite(&fatVal, sizeof(uint32_t), 1, fImage);
         clust = allocate_free_cluster();
 
         if(firstRun == 1)
@@ -556,6 +562,7 @@ void cp(const char* fname, const char* dname)
         printf("clust: %.8X\n", clust);
         printf("clustData: %.8X\n", clustData);
         printf("posData: %.8X\n", posData);
+        printf("fatVal: %.8X\n", fatVal);
 
         fseek(fImage, posData, SEEK_SET);
         fread(&content, 1, bpb.BPB_BytsPerClus, fImage);
@@ -567,11 +574,14 @@ void cp(const char* fname, const char* dname)
         printf("clust: %.8X\n", clust);
         printf("clustData: %.8X\n", clustData);
         printf("posData: %.8X\n", posData);
+        printf("fatVal: %.8X\n", fatVal);
         printf("content: %X\n", content);
 
         next_cluster(pos);
-    }while(
-*/
+//      size_t i;
+//      scanf("%zu",i);        
+    }while(!(fatVal & FAT32_MASK) & !(fatVal & EOC));
+
     if(find_dir(dname))
     {
         find_dir_entry(dname, &entryTo, &offTo);
@@ -628,8 +638,8 @@ void rm(const char* fname)
 /* "write" command */
 void write(const char* fname, const char* size, const char* s)
 {
-    uint32_t offset, fileOff;
-    int fileIndex;
+    uint32_t offset, fileOff, clust, fileIndex, writeOff;
+    int current_clusters, final_clusters, extra_clusters;
     DIR_Entry dir;
     
     // error check
@@ -649,32 +659,63 @@ void write(const char* fname, const char* size, const char* s)
         printf("%s is a directory.\n", fname);
         return;
     }
-
-    fileOff = openedFiles[fileIndex].filePointer;
-    uint32_t writeOff = fileOff + cluster_to_data_offset(dir.DIR_FirstClusterLow);
-    // add more clusters if needed
-    if(fileOff+atoi(size) > dir.DIR_FileSize)
-    {
-        int current_clusters = dir.DIR_FileSize/bpb.BPB_BytsPerClus;
-        if(dir.DIR_FileSize%bpb.BPB_BytsPerClus > 0)
-            ++current_clusters;
-
-        int final_clusters = (openedFiles[fileIndex].filePointer+atoi(size))
-                                /bpb.BPB_BytsPerClus;
-        if((fileOff+atoi(size))%bpb.BPB_BytsPerClus > 0)
-            ++final_clusters;
-
-        int extra_clusters = final_clusters-current_clusters;
-
-        for(int i = 0; i < extra_clusters; ++i)
-            allocate_free_cluster();
-    }
+    
+    // make copy of string
     char newString[atoi(size)];
     strcpy(newString, s);
     for(int i = strlen(s); i < atoi(size); ++i)
         newString[i] = '\0';
+
+    clust = dir.DIR_FileSize/bpb.BPB_BytsPerClus;
+    if(dir.DIR_FileSize%bpb.BPB_BytsPerClus > 0)
+        ++clust;        
+    clust *= bpb.BPB_BytsPerClus;
+    fileOff = openedFiles[fileIndex].filePointer;
+    // add more clusters if needed
+    if(fileOff+atoi(size) > clust)
+    {
+        current_clusters = dir.DIR_FileSize/bpb.BPB_BytsPerClus;
+        if(dir.DIR_FileSize%bpb.BPB_BytsPerClus > 0)
+            ++current_clusters;
+
+        final_clusters = (openedFiles[fileIndex].filePointer+atoi(size))
+                                /bpb.BPB_BytsPerClus;
+        if((fileOff+atoi(size))%bpb.BPB_BytsPerClus > 0)
+            ++final_clusters;
+
+        extra_clusters = final_clusters-current_clusters;
+
+        clust = allocate_free_cluster();
+        fseek(fImage, fat_offset(dir.DIR_FirstClusterLow), SEEK_SET);
+        fwrite(&clust, sizeof(uint32_t), 1, fImage);
+        for(int i = 1; i < extra_clusters; ++i)
+        {
+                clust = allocate_free_cluster();
+                fseek(fImage, fat_offset(dir.DIR_FirstClusterLow), SEEK_SET);
+                fwrite(&clust, sizeof(uint32_t), 1, fImage);
+        }
+    }
+    clust = fat_offset(dir.DIR_FirstClusterLow);
+    fseek(fImage, clust, SEEK_SET);
+    fread(&clust, sizeof(uint32_t), 1, fImage);
+    writeOff = fileOff + cluster_to_data_offset(dir.DIR_FirstClusterLow);
     fseek(fImage, writeOff, SEEK_SET);
-    fwrite(newString, atoi(size), 1, fImage);
+    fwrite(newString, bpb.BPB_BytsPerClus-fileOff, 1, fImage);
+
+    for(int i = 0; i < extra_clusters; ++i)
+    {
+        fseek(fImage, cluster_to_data_offset(clust), SEEK_SET);
+        fwrite(newString, bpb.BPB_BytsPerClus, 1, fImage);
+        clust = next_cluster(clust);
+        fseek(fImage, fat_offset(clust), SEEK_SET);
+    }
+
+    dir.DIR_FileSize = atoi(size)+fileOff;
+    clust = cluster_to_data_offset(clust);
+    clust += atoi(size) - (final_clusters*bpb.BPB_BytsPerClus);
+    char newOff[sizeof(clust)];
+    sprintf(newOff, "%X", clust);
+    lseek(fname, newOff);
 }
 
 /* "read" command */
@@ -684,7 +725,7 @@ void read(const char* fname, const char* size)
 
     DIR_Entry dir;
     int fileIndex;
-    uint32_t offset, fileOffset, tempOfs, newSize;
+    uint32_t offset, fileOffset, newSize;
     char buff[atoi(size)];
 
     if(!find_dir_entry(fname, &dir, &offset))
@@ -705,6 +746,7 @@ void read(const char* fname, const char* size)
         return;
     }
 
+    newSize = atoi(size);
     fileOffset = openedFiles[fileIndex].filePointer;
     while(fileOffset > bpb.BPB_BytsPerClus)
     {
@@ -715,16 +757,17 @@ void read(const char* fname, const char* size)
     fseek(fImage, fileOffset, SEEK_SET); // go to offset in file
 
     if(fileOffset+atoi(size) > bpb.BPB_BytsPerClus)
-        newSize = bpb.BPB_BytsPerClus - fileOffset;
+        newSize= bpb.BPB_BytsPerClus - fileOffset;
 
-    fread(&buff, atoi(size), 1, fImage);
+    fread(&buff, newSize, 1, fImage);
     buff[sizeof(buff)] = '\0';
     printf("%s\n", buff);
+}
 
 /* "size" command */
 int size_file(const char *fname)
 {
-	uint32_t currClust = CWD;
+	uint32_t currClust = CWD, offset, size;
 	DIR_Entry entry;
 	if(!find_dir_entry(fname, &entry, &offset))
 	{
@@ -732,7 +775,7 @@ int size_file(const char *fname)
 		return -1;
 	}
 	
-	currClust = openedFiles[find_opened_file]->firstCluster;
+	currClust = openedFiles[find_opened_file(fname)].firstCluster;
 	do
 	{
 		currClust = next_cluster(currClust);
