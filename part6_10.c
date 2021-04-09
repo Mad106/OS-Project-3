@@ -524,7 +524,8 @@ void lseek(const char* fname, const char* ofs)
 /* "cp" command */
 void cp(const char* fname, const char* dname)
 {
-    uint32_t offFrom, offTo, clust, pos, clustData, posData, content, fatVal;
+    uint32_t offFrom, offTo, clust, pos, clustData, posData, fatVal, newClust;
+    char content[512];
     int firstRun = 1;
     DIR_Entry entryFrom, entryTo, copy;
 
@@ -541,12 +542,12 @@ void cp(const char* fname, const char* dname)
     }
     copy = entryFrom;
 
+    pos = entryFrom.DIR_FirstClusterLow;
     do
     {
-        pos = fat_offset(entryFrom.DIR_FirstClusterLow);
-        fseek(fImage, pos, SEEK_SET);
-        fwrite(&fatVal, sizeof(uint32_t), 1, fImage);
-        clust = allocate_free_cluster();
+        fseek(fImage, fat_offset(pos), SEEK_SET);
+        fread(&fatVal, sizeof(uint32_t), 1, fImage);
+        newClust = allocate_free_cluster();
 
         if(firstRun == 1)
         {
@@ -554,40 +555,33 @@ void cp(const char* fname, const char* dname)
             firstRun = 0;
         }
         
-        clustData = cluster_to_data_offset(clust);
-        clust = fat_offset(clust);
-        posData = cluster_to_data_offset(entryFrom.DIR_FirstClusterLow);
-
-        printf("pos: %.8X\n", pos);
-        printf("clust: %.8X\n", clust);
-        printf("clustData: %.8X\n", clustData);
-        printf("posData: %.8X\n", posData);
-        printf("fatVal: %.8X\n", fatVal);
+        clust = fat_offset(newClust);
+        fseek(fImage, clust, SEEK_SET);
+        fwrite(&newClust, sizeof(uint32_t), 1, fImage);
+        posData = cluster_to_data_offset(pos);
+        clustData = cluster_to_data_offset(newClust);
 
         fseek(fImage, posData, SEEK_SET);
         fread(&content, 1, bpb.BPB_BytsPerClus, fImage);
         fseek(fImage, clustData, SEEK_SET);
         fwrite(&content, 1, bpb.BPB_BytsPerClus, fImage);
 
-        printf("\n*** UPDATED ***\n");
-        printf("pos: %.8X\n", pos);
-        printf("clust: %.8X\n", clust);
-        printf("clustData: %.8X\n", clustData);
-        printf("posData: %.8X\n", posData);
-        printf("fatVal: %.8X\n", fatVal);
-        printf("content: %X\n", content);
-
-        next_cluster(pos);
-//      size_t i;
-//      scanf("%zu",i);        
-    }while(!(fatVal & FAT32_MASK) & !(fatVal & EOC));
-
-    if(find_dir(dname))
-    {
-        find_dir_entry(dname, &entryTo, &offTo);
-        move_entry(&copy, copy.DIR_FirstClusterLow, &entryTo, offTo);        
+        pos = fatVal;
+    }while((fatVal != FAT32_MASK) && (fatVal != EOC));
+    fseek(fImage, clust, SEEK_SET);
+    fwrite(&fatVal, sizeof(uint32_t), 1, fImage);
+        
+    if(find_dir(dname) != EOC){
+            uint32_t oldDir = CWD;
+            change_dir(dname);
+            create_file_in_cwd(fname);
+            find_dir_entry(fname, &entryTo, &offTo);
+            fseek(fImage, offTo, SEEK_SET);
+            fwrite(&copy, sizeof(uint32_t), 8, fImage);
+            CWD = oldDir;
     }
     else{
+        long_to_short(dname, copy.DIR_Name);
         create_file_in_cwd(dname);
         find_dir_entry(dname, &entryTo, &offTo);
         fseek(fImage, offTo, SEEK_SET);
@@ -638,7 +632,7 @@ void rm(const char* fname)
 /* "write" command */
 void write(const char* fname, const char* size, const char* s)
 {
-    uint32_t offset, fileOff, clust, fileIndex, writeOff;
+    uint32_t offset, fileOff, clust, fileIndex, writeOff, newClust;
     int current_clusters, final_clusters, extra_clusters;
     DIR_Entry dir;
     
@@ -690,9 +684,16 @@ void write(const char* fname, const char* size, const char* s)
         fwrite(&clust, sizeof(uint32_t), 1, fImage);
         for(int i = 1; i < extra_clusters; ++i)
         {
-                clust = allocate_free_cluster();
-                fseek(fImage, fat_offset(dir.DIR_FirstClusterLow), SEEK_SET);
-                fwrite(&clust, sizeof(uint32_t), 1, fImage);
+            clust = allocate_free_cluster();
+            newClust = fat_offset(dir.DIR_FirstClusterLow);
+            fseek(fImage, newClust, SEEK_SET);
+            fread(&newClust, sizeof(uint32_t), 1, fImage);
+            while(newClust != FAT32_MASK && newClust != EOC)
+            {
+                newClust = fat_offset(newClust);
+                fseek(fImage, newClust, SEEK_SET);
+                fread(&newClust, sizeof(uint32_t), 1, fImage);
+            }
         }
     }
     clust = fat_offset(dir.DIR_FirstClusterLow);
