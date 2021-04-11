@@ -17,19 +17,25 @@ Parts 11-15: Ryan Lazzari
 
 Tar Archive
 -----------
-
+1) fat32.h - Contains structs for commonly used variables, such as system information.
+2) main.c - Contains implementations of project functions,
+3) Makefile - Makefile to compile and clean project.
+4) Readme - Readme for project.
+5) Repo File - Screenshots of git repo
 
 How to use makefile
 -------------------
+Execute make command to compile project. Run ./project3 <PATH_TO_IMAGE> to run program.
 
 
 Know Bugs/Incomplete Parts
 --------------------------
-
+N/A
 
 Special Considerations
 ----------------------
-
+N/A
 
 Extra Credit
 ------------
+N/A
